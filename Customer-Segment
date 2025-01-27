@@ -1,0 +1,42 @@
+import pandas as pd
+
+# Load the uploaded dataset
+file_path = '/mnt/data/customer_demographics_contaminated.csv'
+data = pd.read_csv(file_path)
+
+# Display the first few rows to understand the structure of the dataset
+data.head(), data.info()
+
+# Convert 'SignupDate' to datetime format
+data['SignupDate'] = pd.to_datetime(data['SignupDate'], errors='coerce')
+
+# Clean 'Age': Convert to numeric, handle non-numeric entries, and impute missing values
+data['Age'] = pd.to_numeric(data['Age'], errors='coerce')
+age_median = data['Age'].median(skipna=True)  # Median for imputation
+data['Age'].fillna(age_median, inplace=True)
+
+# Standardize 'Gender': Ensure consistent values (e.g., Male, Female)
+data['Gender'] = data['Gender'].str.strip().str.capitalize()
+
+# Clean 'IncomeLevel': Handle missing values by imputing with the mode (most common value)
+income_mode = data['IncomeLevel'].mode()[0]
+data['IncomeLevel'].fillna(income_mode, inplace=True)
+
+# Verify the transformations
+data.info(), data.head()
+
+# Add an 'AgeGroup' column
+bins = [0, 18, 35, 50, 65, 100]  # Age ranges
+labels = ['Child', 'Young Adult', 'Adult', 'Middle Aged', 'Senior']
+data['AgeGroup'] = pd.cut(data['Age'], bins=bins, labels=labels, right=False)
+
+# Add a 'Tenure' column: Number of days since signup
+current_date = pd.Timestamp.now()
+data['Tenure'] = (current_date - data['SignupDate']).dt.days
+
+# Add dummy variables for 'Gender' and 'IncomeLevel'
+data = pd.get_dummies(data, columns=['Gender', 'IncomeLevel'], drop_first=True)
+
+# Export the cleaned and engineered dataset
+output_path = '/mnt/data/customer_demographics_cleaned.csv'
+data.to_csv(output_path, index=False)
